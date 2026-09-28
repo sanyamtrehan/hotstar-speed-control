@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Hotstar Speed Control",
+  "version": "1.0.0",
+  "description": "Custom playback speed controls for Hotstar.",
+  "content_scripts": [
+    {
+      "matches": ["*://www.hotstar.com/*", "*://hotstar.com/*"],
+      "js": ["config.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

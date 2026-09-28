@@ -1,0 +1,319 @@
+/* ============================================================
+   Hotstar Speed Control
+   ============================================================ */
+
+#hotstar-speed-controls {
+  /*
+   * ------------------------------------------------------------
+   * Position
+   * ------------------------------------------------------------
+   *
+   * This is the fallback position used until the player menu
+   * becomes available.
+   */
+
+  position: absolute;
+
+  top: 58px;
+  right: 36%;
+
+  z-index: 2147483647;
+
+  /*
+   * ------------------------------------------------------------
+   * Layout
+   * ------------------------------------------------------------
+   */
+
+  display: flex;
+
+  align-items: center;
+
+  gap: var(--hs-gap);
+
+  padding: 6px;
+
+  /*
+   * ------------------------------------------------------------
+   * Appearance
+   * ------------------------------------------------------------
+   */
+
+  background: linear-gradient(
+    135deg,
+    rgba(35, 35, 42, 0.96),
+    rgba(12, 12, 16, 0.92)
+  );
+
+  color: var(--hs-foreground);
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+
+  border-radius: var(--hs-radius);
+
+  backdrop-filter: blur(var(--hs-blur));
+
+  -webkit-backdrop-filter: blur(var(--hs-blur));
+
+  opacity: var(--hs-opacity);
+
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(255, 255, 255, 0.06);
+
+  /*
+   * ------------------------------------------------------------
+   * Animation
+   * ------------------------------------------------------------
+   */
+
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+
+  /*
+   * ------------------------------------------------------------
+   * Text
+   * ------------------------------------------------------------
+   */
+
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  user-select: none;
+}
+
+/* ============================================================
+   Player toolbar position
+   ============================================================ */
+
+#hotstar-speed-controls.embedded {
+  position: relative;
+
+  top: auto;
+  right: auto;
+
+  flex: 0 0 auto;
+
+  padding: 0;
+
+  background: transparent;
+
+  border: none;
+
+  opacity: 1;
+
+  pointer-events: auto;
+
+  transform: none;
+
+  transition: none;
+
+  backdrop-filter: none;
+
+  -webkit-backdrop-filter: none;
+
+  box-shadow: none;
+}
+
+#hotstar-speed-controls.embedded:hover,
+#hotstar-speed-controls.embedded.menu-open {
+  box-shadow: none;
+}
+
+#hotstar-speed-controls.embedded > button,
+#hotstar-speed-controls.embedded > button:hover {
+  color: #ffffff !important;
+
+  background: transparent !important;
+
+  box-shadow: none;
+}
+
+/* ============================================================
+   Hidden state
+   ============================================================ */
+
+#hotstar-speed-controls.hidden {
+  opacity: 0;
+
+  pointer-events: none;
+
+  transform: translateY(-8px) scale(0.96);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+
+#hotstar-speed-controls button {
+  border: none;
+
+  color: #ffffff;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  font-family: inherit;
+
+  border-radius: 8px;
+
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    transform 80ms ease;
+}
+
+#hotstar-speed-controls button:hover {
+  color: #ffffff;
+
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#hotstar-speed-controls button:active {
+  transform: scale(0.91);
+}
+
+/* ============================================================
+   +/- buttons
+   ============================================================ */
+
+.hotstar-speed-step {
+  width: var(--hs-button-size);
+
+  height: var(--hs-button-size);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  font-size: 19px !important;
+
+  font-weight: 400;
+}
+
+/* ============================================================
+   Main speed button
+   ============================================================ */
+
+.hotstar-speed-main {
+  min-width: 52px;
+
+  height: var(--hs-button-size);
+
+  padding: 0 10px;
+
+  font-size: var(--hs-font-size) !important;
+
+  font-weight: 700;
+
+  color: #ffffff !important;
+
+  background: transparent !important;
+}
+
+.hotstar-speed-main:hover {
+  background: rgba(255, 255, 255, 0.17) !important;
+
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.12);
+}
+
+/* ============================================================
+   Speed menu
+   ============================================================ */
+
+.hotstar-speed-menu {
+  position: absolute;
+
+  top: calc(100% + 8px);
+
+  right: 0;
+
+  display: none;
+
+  flex-direction: column;
+
+  min-width: 82px;
+
+  padding: 6px;
+
+  background: #000000;
+
+  border: 1px solid rgba(255, 255, 255, 0.15);
+
+  border-radius: 10px;
+
+  backdrop-filter: blur(16px);
+
+  -webkit-backdrop-filter: blur(16px);
+
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.55);
+}
+
+#hotstar-speed-controls.menu-open .hotstar-speed-menu {
+  display: flex;
+}
+
+/* ============================================================
+   Speed options
+   ============================================================ */
+
+.hotstar-speed-option {
+  height: 32px;
+
+  padding: 0 12px;
+
+  text-align: center;
+
+  font-size: 13px !important;
+}
+
+.hotstar-speed-option:hover {
+  background: rgba(255, 255, 255, 0.13) !important;
+}
+
+/* ============================================================
+   Selected speed
+   ============================================================ */
+
+.hotstar-speed-option.active {
+  color: #ffffff !important;
+
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.08)
+  ) !important;
+
+  font-weight: 700;
+
+  box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================================
+   Menu-open glow
+   ============================================================ */
+
+#hotstar-speed-controls.menu-open {
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.5),
+    0 0 28px rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================
+   Optional flashy hover glow
+   ============================================================ */
+
+#hotstar-speed-controls:hover {
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.5),
+    0 0 24px rgba(255, 255, 255, 0.09);
+}
