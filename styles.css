@@ -227,6 +227,68 @@
 }
 
 /* ============================================================
+   Audio boost button
+   ============================================================ */
+
+.hotstar-control-divider {
+  width: 1px;
+  height: 20px;
+
+  margin: 0 3px;
+
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.hotstar-audio-main {
+  position: relative;
+
+  width: var(--hs-button-size);
+  height: var(--hs-button-size);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+}
+
+.hotstar-audio-main svg {
+  width: 21px;
+  height: 21px;
+
+  overflow: visible;
+}
+
+.hotstar-audio-main svg path:first-child {
+  fill: currentColor;
+  stroke: none;
+}
+
+.hotstar-audio-main svg path:not(:first-child) {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.hotstar-audio-main.active::after {
+  position: absolute;
+
+  right: 2px;
+  bottom: 2px;
+
+  width: 5px;
+  height: 5px;
+
+  content: "";
+
+  background: #ffffff;
+
+  border-radius: 50%;
+}
+
+/* ============================================================
    Speed menu
    ============================================================ */
 
@@ -260,6 +322,107 @@
 
 #hotstar-speed-controls.menu-open .hotstar-speed-menu {
   display: flex;
+}
+
+/* ============================================================
+   Audio boost menu
+   ============================================================ */
+
+.hotstar-audio-menu {
+  position: absolute;
+
+  top: calc(100% + 8px);
+  right: 0;
+
+  display: none;
+
+  flex-direction: column;
+  gap: 8px;
+
+  width: 184px;
+
+  padding: 10px;
+
+  color: #ffffff;
+  background: #000000;
+
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.55);
+}
+
+#hotstar-speed-controls.audio-menu-open .hotstar-audio-menu {
+  display: flex;
+}
+
+.hotstar-audio-toggle {
+  min-height: 34px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 8px;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hotstar-audio-status {
+  min-width: 32px;
+
+  padding: 3px 7px;
+
+  color: rgba(255, 255, 255, 0.7);
+
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+
+  font-size: 11px;
+  text-align: center;
+}
+
+.hotstar-audio-toggle.active .hotstar-audio-status {
+  color: #000000;
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.hotstar-audio-adjustment {
+  display: grid;
+
+  grid-template-columns: 34px 1fr 34px;
+
+  align-items: center;
+
+  overflow: hidden;
+
+  background: rgba(255, 255, 255, 0.08);
+
+  border-radius: 8px;
+}
+
+.hotstar-audio-adjustment button {
+  width: 34px;
+  height: 34px;
+
+  padding: 0;
+
+  font-size: 18px;
+}
+
+.hotstar-audio-value {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.hotstar-audio-reset {
+  min-height: 30px;
+
+  font-size: 12px;
 }
 
 /* ============================================================

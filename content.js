@@ -9,6 +9,10 @@
 
   const STORAGE_KEY = "hotstar-playback-speed";
 
+  const AUDIO_ENABLED_STORAGE_KEY = "hotstar-audio-boost-enabled";
+
+  const AUDIO_GAIN_STORAGE_KEY = "hotstar-audio-boost-gain";
+
   const PLAYER_MENU_SELECTOR = 'button[data-testid="player-menu"]';
 
   let video = null;
@@ -19,6 +23,34 @@
 
   let currentSpeed =
     parseFloat(localStorage.getItem(STORAGE_KEY)) || SPEED_CONFIG.defaultSpeed;
+
+  let audioEnabled =
+    localStorage.getItem(AUDIO_ENABLED_STORAGE_KEY) === "true" ||
+    (localStorage.getItem(AUDIO_ENABLED_STORAGE_KEY) === null &&
+      SPEED_CONFIG.audio.defaultEnabled);
+
+  const storedAudioGain = parseFloat(
+    localStorage.getItem(AUDIO_GAIN_STORAGE_KEY),
+  );
+
+  let audioGain = Number.isFinite(storedAudioGain)
+    ? Math.max(
+        SPEED_CONFIG.audio.minGain,
+        Math.min(SPEED_CONFIG.audio.maxGain, storedAudioGain),
+      )
+    : SPEED_CONFIG.audio.defaultGain;
+
+  let audioContext = null;
+
+  let gainNode = null;
+
+  let compressorNode = null;
+
+  let activeAudioSource = null;
+
+  let activeAudioVideo = null;
+
+  const audioSources = new WeakMap();
 
   /*
    * ============================================================
@@ -89,6 +121,168 @@
     newIndex = Math.max(0, Math.min(speeds.length - 1, newIndex));
 
     setSpeed(speeds[newIndex]);
+  }
+
+  /*
+   * ============================================================
+   * Audio boost
+   * ============================================================
+   */
+
+  function clampAudioGain(gain) {
+    return Math.max(
+      SPEED_CONFIG.audio.minGain,
+      Math.min(SPEED_CONFIG.audio.maxGain, gain),
+    );
+  }
+
+  function ensureAudioContext() {
+    if (audioContext) {
+      return audioContext;
+    }
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContextClass) {
+      console.warn("[Hotstar Speed] Web Audio is not supported");
+
+      return null;
+    }
+
+    audioContext = new AudioContextClass();
+    gainNode = audioContext.createGain();
+    compressorNode = audioContext.createDynamicsCompressor();
+
+    /*
+     * Limit only the boosted peaks. With a ratio of 1 the
+     * compressor becomes transparent when boost is disabled.
+     */
+
+    compressorNode.threshold.value = -3;
+    compressorNode.knee.value = 0;
+    compressorNode.attack.value = 0.003;
+    compressorNode.release.value = 0.25;
+
+    gainNode.connect(compressorNode);
+    compressorNode.connect(audioContext.destination);
+
+    updateAudioGraph();
+
+    return audioContext;
+  }
+
+  function updateAudioGraph() {
+    if (!audioContext || !gainNode || !compressorNode) {
+      return;
+    }
+
+    const now = audioContext.currentTime;
+    const effectiveGain = audioEnabled ? audioGain : 1;
+    const compressorRatio = audioEnabled && audioGain > 1 ? 20 : 1;
+
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setTargetAtTime(effectiveGain, now, 0.015);
+
+    compressorNode.ratio.cancelScheduledValues(now);
+    compressorNode.ratio.setTargetAtTime(compressorRatio, now, 0.015);
+  }
+
+  function disconnectActiveAudioSource() {
+    if (activeAudioSource) {
+      activeAudioSource.disconnect();
+    }
+
+    activeAudioSource = null;
+    activeAudioVideo = null;
+  }
+
+  function connectAudioSource(targetVideo) {
+    if (!audioContext || !gainNode || activeAudioVideo === targetVideo) {
+      return;
+    }
+
+    disconnectActiveAudioSource();
+
+    let source = audioSources.get(targetVideo);
+
+    try {
+      if (!source) {
+        source = audioContext.createMediaElementSource(targetVideo);
+        audioSources.set(targetVideo, source);
+      }
+
+      source.connect(gainNode);
+
+      activeAudioSource = source;
+      activeAudioVideo = targetVideo;
+    } catch (error) {
+      console.warn("[Hotstar Speed] Could not connect audio boost", error);
+    }
+  }
+
+  async function activateAudioBoost(targetVideo = video) {
+    if (!audioEnabled || !targetVideo) {
+      return;
+    }
+
+    const context = ensureAudioContext();
+
+    if (!context) {
+      return;
+    }
+
+    try {
+      if (context.state !== "running") {
+        await context.resume();
+      }
+
+      if (
+        audioEnabled &&
+        targetVideo === video &&
+        context.state === "running"
+      ) {
+        connectAudioSource(targetVideo);
+        updateAudioGraph();
+      }
+    } catch (error) {
+      console.warn("[Hotstar Speed] Could not start audio boost", error);
+    }
+  }
+
+  function setAudioEnabled(enabled) {
+    audioEnabled = Boolean(enabled);
+
+    localStorage.setItem(AUDIO_ENABLED_STORAGE_KEY, String(audioEnabled));
+
+    updateAudioGraph();
+    updateAudioUI();
+
+    if (audioEnabled) {
+      void activateAudioBoost();
+    } else if (audioContext?.state === "suspended") {
+      void audioContext.resume().catch((error) => {
+        console.warn("[Hotstar Speed] Could not resume audio output", error);
+      });
+    }
+  }
+
+  function setAudioGain(gain) {
+    gain = Number(gain);
+
+    if (!Number.isFinite(gain)) {
+      return;
+    }
+
+    audioGain = Math.round(clampAudioGain(gain) * 100) / 100;
+
+    localStorage.setItem(AUDIO_GAIN_STORAGE_KEY, String(audioGain));
+
+    updateAudioGraph();
+    updateAudioUI();
+  }
+
+  function changeAudioGain(amount) {
+    setAudioGain(audioGain + amount);
   }
 
   /*
@@ -201,6 +395,61 @@
       }
 
       <div class="hotstar-speed-menu"></div>
+
+      <span class="hotstar-control-divider" aria-hidden="true"></span>
+
+      <button
+        class="hotstar-audio-main"
+        title="Audio boost"
+        aria-label="Audio boost"
+        aria-expanded="false"
+        aria-pressed="false"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9v6h4l5 4V5L8 9H4Z"></path>
+          <path d="M16 8.5a5 5 0 0 1 0 7"></path>
+          <path d="M18.5 6a8.5 8.5 0 0 1 0 12"></path>
+        </svg>
+      </button>
+
+      <div class="hotstar-audio-menu">
+        <button
+          class="hotstar-audio-toggle"
+          data-audio-action="toggle"
+          role="switch"
+          aria-checked="false"
+        >
+          <span>Audio boost</span>
+          <span class="hotstar-audio-status">Off</span>
+        </button>
+
+        <div class="hotstar-audio-adjustment">
+          <button
+            data-audio-action="decrease"
+            title="Decrease audio boost"
+            aria-label="Decrease audio boost"
+          >
+            −
+          </button>
+
+          <span class="hotstar-audio-value">2×</span>
+
+          <button
+            data-audio-action="increase"
+            title="Increase audio boost"
+            aria-label="Increase audio boost"
+          >
+            +
+          </button>
+        </div>
+
+        <button
+          class="hotstar-audio-reset"
+          data-audio-action="reset"
+        >
+          Reset to 1×
+        </button>
+      </div>
     `;
 
     /*
@@ -258,6 +507,8 @@
     const mainButton = controls.querySelector(".hotstar-speed-main");
 
     mainButton.addEventListener("click", () => {
+      hideAudioMenu();
+
       controls.classList.toggle("menu-open");
 
       showControls();
@@ -292,6 +543,55 @@
 
       menu.appendChild(option);
     });
+
+    /*
+     * ----------------------------------------------------------
+     * Audio boost
+     * ----------------------------------------------------------
+     */
+
+    const audioButton = controls.querySelector(".hotstar-audio-main");
+
+    audioButton.addEventListener("click", () => {
+      hideSpeedMenu();
+
+      controls.classList.toggle("audio-menu-open");
+
+      audioButton.setAttribute(
+        "aria-expanded",
+        String(controls.classList.contains("audio-menu-open")),
+      );
+
+      showControls();
+    });
+
+    controls
+      .querySelector('[data-audio-action="toggle"]')
+      .addEventListener("click", () => {
+        setAudioEnabled(!audioEnabled);
+        showControls();
+      });
+
+    controls
+      .querySelector('[data-audio-action="decrease"]')
+      .addEventListener("click", () => {
+        changeAudioGain(-SPEED_CONFIG.audio.step);
+        showControls();
+      });
+
+    controls
+      .querySelector('[data-audio-action="increase"]')
+      .addEventListener("click", () => {
+        changeAudioGain(SPEED_CONFIG.audio.step);
+        showControls();
+      });
+
+    controls
+      .querySelector('[data-audio-action="reset"]')
+      .addEventListener("click", () => {
+        setAudioGain(1);
+        showControls();
+      });
 
     /*
      * Appearance variables
@@ -340,6 +640,7 @@
     console.log("[Hotstar Speed] Controls added:", controls);
 
     updateUI();
+    updateAudioUI();
   }
 
   /*
@@ -366,6 +667,37 @@
     });
   }
 
+  function updateAudioUI() {
+    if (!controls) {
+      return;
+    }
+
+    const audioButton = controls.querySelector(".hotstar-audio-main");
+    const toggle = controls.querySelector(".hotstar-audio-toggle");
+    const status = controls.querySelector(".hotstar-audio-status");
+    const value = controls.querySelector(".hotstar-audio-value");
+
+    audioButton?.classList.toggle("active", audioEnabled);
+    audioButton?.setAttribute("aria-pressed", String(audioEnabled));
+
+    if (audioButton) {
+      audioButton.title = audioEnabled
+        ? `Audio boost: ${formatSpeed(audioGain)}`
+        : "Audio boost: Off";
+    }
+
+    toggle?.classList.toggle("active", audioEnabled);
+    toggle?.setAttribute("aria-checked", String(audioEnabled));
+
+    if (status) {
+      status.textContent = audioEnabled ? "On" : "Off";
+    }
+
+    if (value) {
+      value.textContent = formatSpeed(audioGain);
+    }
+  }
+
   /*
    * ============================================================
    * Menu
@@ -378,6 +710,18 @@
     }
 
     controls.classList.remove("menu-open");
+  }
+
+  function hideAudioMenu() {
+    if (!controls) {
+      return;
+    }
+
+    controls.classList.remove("audio-menu-open");
+
+    controls
+      .querySelector(".hotstar-audio-main")
+      ?.setAttribute("aria-expanded", "false");
   }
 
   /*
@@ -401,6 +745,7 @@
 
     hideTimer = setTimeout(() => {
       hideSpeedMenu();
+      hideAudioMenu();
 
       controls.classList.add("hidden");
     }, SPEED_CONFIG.hideDelay);
@@ -509,6 +854,17 @@
     });
   }
 
+  function setupAudioResume() {
+    const resumeAudio = () => {
+      if (audioEnabled && audioContext?.state !== "running") {
+        void activateAudioBoost();
+      }
+    };
+
+    document.addEventListener("pointerdown", resumeAudio, true);
+    document.addEventListener("keydown", resumeAudio, true);
+  }
+
   /*
    * ============================================================
    * Detect video replacement
@@ -521,12 +877,23 @@
   function checkVideo() {
     const newVideo = findVideo();
 
+    if (!newVideo && video) {
+      disconnectActiveAudioSource();
+      video = null;
+    }
+
     if (newVideo && newVideo !== video) {
       console.log("[Hotstar Speed] New video detected");
+
+      disconnectActiveAudioSource();
 
       video = newVideo;
 
       video.playbackRate = currentSpeed;
+
+      if (audioEnabled) {
+        void activateAudioBoost(newVideo);
+      }
     }
 
     /*
@@ -573,9 +940,15 @@
 
     applySpeed();
 
+    if (audioEnabled) {
+      void activateAudioBoost();
+    }
+
     setupMouseDetection();
 
     setupKeyboard();
+
+    setupAudioResume();
 
     watchForChanges();
 
